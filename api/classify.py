@@ -91,6 +91,15 @@ def clean(items, n):
     return out
 
 
+def _why(e, key):
+    """Google이 돌려준 오류 메시지를 짧게 꺼낸다. 열쇠가 섞여 있으면 가린다."""
+    try:
+        msg = json.loads(e.read().decode("utf-8"))["error"]["message"]
+    except Exception:  # noqa: BLE001
+        return "모델 이름·한도를 확인"
+    return str(msg).replace(key, "[키]")[:200]
+
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, obj, status=200):
         raw = json.dumps(obj, ensure_ascii=False).encode("utf-8")
@@ -114,6 +123,6 @@ class handler(BaseHTTPRequestHandler):
             items = call_gemini(key, build_prompt(texts, crit))
             return self._send({"results": clean(items, len(texts)), "model": MODEL})
         except urllib.error.HTTPError as e:
-            return self._send({"results": None, "reason": f"AI 호출 실패 ({e.code}) — 모델 이름·한도를 확인"})
+            return self._send({"results": None, "reason": f"AI 호출 실패 ({e.code}) — {_why(e, key)}"})
         except Exception as e:  # noqa: BLE001
             return self._send({"results": None, "reason": f"AI 호출 실패 — {type(e).__name__}"})
